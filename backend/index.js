@@ -1,17 +1,11 @@
 const express = require("express");
-const mongoose = require("mongoose");
-const dotenv = require("dotenv");
+const dotenv = require("dotenv"); // Import dotenv
 const bodyParser = require("body-parser");
-const blogRoutes = require("./Routes/blogRoute");
+const mongoose = require("mongoose");
+const generationRoutes = require("./Routes/blogRoute");
 
-// Load environment variables
-dotenv.config();
-
-// Initialize express app
-const app = express();
-
-// Middleware
-app.use(bodyParser.json());
+// Initialize environment variables
+dotenv.config(); // Correct syntax
 
 // MongoDB connection
 mongoose
@@ -19,18 +13,20 @@ mongoose
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
-  .then(() => {
-    console.log("Connected to MongoDB");
-  })
-  .catch((err) => {
-    console.log("Error connecting to MongoDB:", err);
-  });
+  .then(() => console.log("MongoDB connected successfully"))
+  .catch((err) => console.log("MongoDB connection error:", err));
+
+// Create Express app
+const app = express();
+const port = process.env.PORT || 8080;
+
+// Middleware
+app.use(bodyParser.json());
 
 // Routes
-app.use("/api/blogs", blogRoutes);
+app.use("/api/blog", generationRoutes);
 
 // Start the server
-const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
 });

@@ -1,11 +1,15 @@
 const express = require("express");
-const { generateBlog, getAllBlogs } = require("../Controllers/blogController");
+const {
+  generateBlog,
+  getRecentBlogs,
+} = require("../Controllers/blogController");
+
 const router = express.Router();
 
-// Route for generating a blog post
+// Route to generate blog post text
 router.post("/generate", generateBlog);
 
-// Route for getting all blogs
-router.get("/", getAllBlogs);
+// Route to get all generated content
+router.get("/all", getRecentBlogs);
 
 module.exports = router;

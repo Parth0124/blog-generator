@@ -1,77 +1,91 @@
-const axios = require("axios");
 const Blog = require("../Models/blog");
+const axios = require("axios");
 
 // Controller function to generate a blog post
-const generateBlog = async (req, res) => {
-  const { topic } = req.body;
-
-  if (!topic) {
-    return res.status(400).json({ message: "Topic is required" });
-  }
-
+exports.generateBlog = async (req, res) => {
   try {
-    // Prepare a dynamic and detailed prompt to improve the diversity of the output
-    const prompt = `Write a 1000-word, well-researched blog post about ${topic}. Be detailed and provide examples where necessary.`;
+    const { prompt } = req.body;
 
-    // Call Hugging Face API to generate blog content
+    // Validate input
+    if (!prompt) {
+      return res.status(400).json({ message: "Prompt is required" });
+    }
+
+    // Fetch OpenAI API key from environment variables
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ message: "API key is missing" });
+    }
+
+    // Generate blog content using OpenAI API
     const response = await axios.post(
-      "https://api-inference.huggingface.co/models/gpt-neo-2.7B", // Using a larger model for better quality
+      "https://api.openai.com/v1/chat/completions",
       {
-        inputs: prompt,
-        parameters: {
-          temperature: 0.7, // Controls randomness: 1 is most random, 0 is deterministic
-          max_length: 1500, // You can adjust the max length here
-          top_p: 0.9, // Helps to sample from a more diverse set of tokens
-          top_k: 50, // Limits the model's sampling options
-        },
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "system",
+            content: "You are a professional blog writer.",
+          },
+          {
+            role: "user",
+            content: `Write a 1000-word blog post about: ${prompt}. Include a title at the beginning of the post.`,
+          },
+        ],
+        max_tokens: 1500,
+        temperature: 0.7,
       },
       {
         headers: {
-          Authorization: `Bearer ${process.env.HF_API_KEY}`,
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
         },
       }
     );
 
-    // Extract the generated content and clean it up (remove prompt from content)
-    const generatedContent = response.data[0].generated_text;
-    const cleanContent = generatedContent.replace(prompt, "").trim();
+    // Process the generated text
+    const generatedText = response.data.choices[0].message.content.trim();
+    const [title, ...contentArray] = generatedText.split("\n\n");
 
-    // Create a new blog post with the cleaned-up content
-    const blogPost = new Blog({
-      title: `Blog on ${topic}`,
-      content: cleanContent, // Store only the content, excluding the prompt
-      topic: topic,
+    // Create and save the new blog post
+    const blog = new Blog({
+      title: title.replace("Title: ", "").trim(),
+      content: contentArray.join("\n\n"),
     });
+    await blog.save();
 
-    // Save the blog post to the database
-    await blogPost.save();
-
-    // Send the response with the generated blog
-    res.status(200).json({
-      message: "Blog generated successfully!",
-      blog: blogPost,
-    });
+    // Send the generated blog post as the response
+    res.json(blog);
   } catch (error) {
     console.error("Error generating blog:", error);
-    res.status(500).json({ message: "Error generating blog", error });
-  }
-};
 
-module.exports = { generateBlog };
+    // Enhanced error handling
+    if (error.response) {
+      // OpenAI API error
+      return res.status(error.response.status).json({
+        message: "Error generating blog",
+        error: error.response.data.error.message,
+      });
+    }
 
-
-// Controller function to get all blogs
-const getAllBlogs = async (req, res) => {
-  try {
-    const blogs = await Blog.find(); // Retrieve all blogs from the database
-    res.status(200).json({
-      message: "Blogs fetched successfully!",
-      blogs: blogs,
+    res.status(500).json({
+      message: "Error generating blog",
+      error: error.message,
     });
-  } catch (error) {
-    console.error("Error fetching blogs:", error);
-    res.status(500).json({ message: "Error fetching blogs", error });
   }
 };
 
-module.exports = { generateBlog, getAllBlogs };
+// Controller function to fetch recent blog posts
+exports.getRecentBlogs = async (req, res) => {
+  try {
+    // Fetch the 5 most recent blog posts
+    const blogs = await Blog.find().sort({ createdAt: -1 }).limit(5);
+    res.json(blogs);
+  } catch (error) {
+    console.error("Error fetching recent blogs:", error);
+    res.status(500).json({
+      message: "Error fetching recent blogs",
+      error: error.message,
+    });
+  }
+};

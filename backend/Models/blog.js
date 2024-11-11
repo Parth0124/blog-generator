@@ -1,16 +1,11 @@
 const mongoose = require("mongoose");
 
-// Define the schema for blog posts
-const blogSchema = new mongoose.Schema({
-  title: {
+const GeneratedContentSchema = new mongoose.Schema({
+  prompt: {
     type: String,
     required: true,
   },
-  content: {
-    type: String,
-    required: true,
-  },
-  topic: {
+  generatedText: {
     type: String,
     required: true,
   },
@@ -20,7 +15,9 @@ const blogSchema = new mongoose.Schema({
   },
 });
 
-// Create the Blog model
-const Blog = mongoose.model("Blog", blogSchema);
+const GeneratedContent = mongoose.model(
+  "GeneratedContent",
+  GeneratedContentSchema
+);
 
-module.exports = Blog;
+module.exports = GeneratedContent;
